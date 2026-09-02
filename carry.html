@@ -25,8 +25,9 @@
   .stamp{color:var(--muted);font-size:13.5px}
   .stamp b{color:var(--text);font-weight:560}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--signal);display:inline-block;margin-right:7px;vertical-align:1px}
-  .backlink{display:block;color:var(--muted);font-size:13px;text-decoration:none;padding-bottom:16px}
-  .backlink:hover{color:var(--text)}
+  nav{padding-bottom:16px;display:flex;gap:16px;flex-wrap:wrap}
+  nav a{color:var(--muted);font-size:13px;text-decoration:none}
+  nav a:hover{color:var(--text)}
 
   .trace{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:18px 0 0;overflow:hidden}
   .trace-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:0 20px 8px}
@@ -86,7 +87,10 @@
     <h1>Carry unwind monitor</h1>
     <div class="stamp" id="stamp"><span class="dot"></span>Loading five years of rates…</div>
   </div>
-  <a class="backlink" href="./">Back to the stress dashboard</a>
+  <nav>
+    <a href="./">Stress dashboard</a>
+    <a href="./dollar.html">Dollar panel</a>
+  </nav>
 
   <div id="loading" class="state">Building the carry basket…</div>
   <div id="failed" class="state hidden">
