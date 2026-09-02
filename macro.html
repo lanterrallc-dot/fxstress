@@ -1,4 +1,40 @@
-<div class="shell">
+<!-- ============================================================
+     PASTE THIS BLOCK into the Macro / Liquidity Risk Monitor.
+
+     WHERE: find this line, near the top of the <body>:
+
+         <div class="shell">
+
+     Paste everything below IMMEDIATELY ABOVE that line — i.e. between
+     the closing </div> of the topbar and the opening of <div class="shell">.
+
+     Assumes all four pages sit in the same folder, with this file saved
+     as macro.html. Styling uses the dashboard's own CSS variables, so it
+     inherits the existing palette and fonts automatically.
+     ============================================================ -->
+
+<div style="max-width:1280px; margin:0 auto; padding:14px clamp(16px,4vw,48px) 0;">
+  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+              border:1px solid var(--hair); border-radius:10px;
+              background:var(--panel-alt); padding:10px 14px;">
+    <span style="font-family:var(--mono); font-size:10.5px; color:var(--muted-dim);
+                 text-transform:uppercase; letter-spacing:0.06em;">FX detail</span>
+    <a href="./" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
+       text-decoration:none; border-bottom:1px solid transparent;"
+       onmouseover="this.style.color='var(--live)'"
+       onmouseout="this.style.color='var(--muted)'">Stress dashboard</a>
+    <a href="./carry.html" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
+       text-decoration:none;"
+       onmouseover="this.style.color='var(--live)'"
+       onmouseout="this.style.color='var(--muted)'">Carry unwind monitor</a>
+    <a href="./dollar.html" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
+       text-decoration:none;"
+       onmouseover="this.style.color='var(--live)'"
+       onmouseout="this.style.color='var(--muted)'">Dollar panel</a>
+    <span style="font-family:var(--mono); font-size:10.5px; color:var(--muted-dim);
+                 margin-left:auto;">ECB spot rates · independent of the FRED feed above</span>
+  </div>
+</div><div class="shell">
 <!DOCTYPE html>
 <html lang="en">
 <head>
