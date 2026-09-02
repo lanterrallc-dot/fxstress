@@ -1,40 +1,3 @@
-<!-- ============================================================
-     PASTE THIS BLOCK into the Macro / Liquidity Risk Monitor.
-
-     WHERE: find this line, near the top of the <body>:
-
-         <div class="shell">
-
-     Paste everything below IMMEDIATELY ABOVE that line — i.e. between
-     the closing </div> of the topbar and the opening of <div class="shell">.
-
-     Assumes all four pages sit in the same folder, with this file saved
-     as macro.html. Styling uses the dashboard's own CSS variables, so it
-     inherits the existing palette and fonts automatically.
-     ============================================================ -->
-
-<div style="max-width:1280px; margin:0 auto; padding:14px clamp(16px,4vw,48px) 0;">
-  <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;
-              border:1px solid var(--hair); border-radius:10px;
-              background:var(--panel-alt); padding:10px 14px;">
-    <span style="font-family:var(--mono); font-size:10.5px; color:var(--muted-dim);
-                 text-transform:uppercase; letter-spacing:0.06em;">FX detail</span>
-    <a href="./" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
-       text-decoration:none; border-bottom:1px solid transparent;"
-       onmouseover="this.style.color='var(--live)'"
-       onmouseout="this.style.color='var(--muted)'">Stress dashboard</a>
-    <a href="./carry.html" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
-       text-decoration:none;"
-       onmouseover="this.style.color='var(--live)'"
-       onmouseout="this.style.color='var(--muted)'">Carry unwind monitor</a>
-    <a href="./dollar.html" style="font-family:var(--mono); font-size:11.5px; color:var(--muted);
-       text-decoration:none;"
-       onmouseover="this.style.color='var(--live)'"
-       onmouseout="this.style.color='var(--muted)'">Dollar panel</a>
-    <span style="font-family:var(--mono); font-size:10.5px; color:var(--muted-dim);
-                 margin-left:auto;">ECB spot rates · independent of the FRED feed above</span>
-  </div>
-</div><div class="shell">
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -949,3 +912,65 @@ document.addEventListener('DOMContentLoaded', async ()=>{
 </script>
 </body>
 </html>
+<script>
+/* FX navigation for the Macro / Liquidity Risk Monitor.
+   This finds its own spot on the page, so it can be pasted at the very
+   end of the file and still appear in the right place. */
+(function () {
+  var links = [
+    ['./',            'Stress dashboard'],
+    ['./carry.html',  'Carry unwind monitor'],
+    ['./dollar.html', 'Dollar panel']
+  ];
+
+  function build() {
+    var shell = document.querySelector('.shell');
+    if (!shell) return;
+
+    var outer = document.createElement('div');
+    outer.style.cssText =
+      'max-width:1280px;margin:0 auto;padding:14px clamp(16px,4vw,48px) 0;';
+
+    var bar = document.createElement('div');
+    bar.style.cssText =
+      'display:flex;align-items:center;gap:14px;flex-wrap:wrap;' +
+      'border:1px solid var(--hair);border-radius:10px;' +
+      'background:var(--panel-alt);padding:10px 14px;';
+
+    var label = document.createElement('span');
+    label.textContent = 'FX detail';
+    label.style.cssText =
+      'font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);' +
+      'text-transform:uppercase;letter-spacing:0.06em;';
+    bar.appendChild(label);
+
+    links.forEach(function (l) {
+      var a = document.createElement('a');
+      a.href = l[0];
+      a.textContent = l[1];
+      a.style.cssText =
+        'font-family:var(--mono);font-size:11.5px;color:var(--muted);' +
+        'text-decoration:none;transition:color .15s ease;';
+      a.onmouseover = function () { a.style.color = 'var(--live)'; };
+      a.onmouseout  = function () { a.style.color = 'var(--muted)'; };
+      bar.appendChild(a);
+    });
+
+    var note = document.createElement('span');
+    note.textContent = 'ECB spot rates \u00b7 independent of the FRED feed above';
+    note.style.cssText =
+      'font-family:var(--mono);font-size:10.5px;color:var(--muted-dim);' +
+      'margin-left:auto;';
+    bar.appendChild(note);
+
+    outer.appendChild(bar);
+    shell.parentNode.insertBefore(outer, shell);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', build);
+  } else {
+    build();
+  }
+})();
+</script>
