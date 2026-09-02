@@ -45,6 +45,623 @@
     display:inline-block;margin-right:7px;vertical-align:1px;
   }
 
+  nav{padding-bottom:16px;display:flex;gap:16px;flex-wrap:wrap}
+  nav a{color:var(--muted);font-size:13px;text-decoration:none}
+  nav a:hover{color:var(--text)}
+
+  /* ---- hero trace ---- */
+  .trace{
+    background:var(--panel);
+    border:1px solid var(--rule);
+    border-radius:3px;
+    padding:18px 0 0;
+    position:relative;
+    overflow:hidden;
+  }
+  .trace-head{
+    display:flex;justify-content:space-between;align-items:flex-start;
+    gap:16px;padding:0 20px 8px;
+  }
+  .trace-head p{margin:0;color:var(--muted);font-size:13.5px;max-width:46ch}
+  .reading{text-align:right;line-height:1;flex:none}
+  .reading .num{
+    font-size:clamp(46px,10vw,68px);
+    font-weight:660;
+    letter-spacing:-0.045em;
+    color:var(--signal);
+    display:block;
+  }
+  .reading .regime{
+    font-size:14px;color:var(--signal);font-weight:560;
+    display:block;margin-top:6px;letter-spacing:-0.01em;
+  }
+  svg.chart{display:block;width:100%;height:auto}
+  .band-label{fill:var(--muted);font-size:9px}
+  .axis-t{fill:var(--muted);font-size:10px}
+
+  /* ---- drivers ---- */
+  .drivers{margin-top:28px}
+  .sec-h{
+    font-size:15px;font-weight:600;margin:0 0 2px;letter-spacing:-0.01em;
+  }
+  .sec-p{margin:0 0 14px;color:var(--muted);font-size:13.5px;max-width:62ch}
+  .driver{
+    display:grid;
+    grid-template-columns:1fr 52px;
+    gap:4px 14px;
+    align-items:center;
+    padding:11px 0;
+    border-top:1px solid var(--rule);
+  }
+  .driver:last-child{border-bottom:1px solid var(--rule)}
+  .driver .nm{font-size:14.5px;font-weight:540}
+  .driver .val{
+    text-align:right;font-size:19px;font-weight:620;letter-spacing:-0.03em;
+  }
+  .driver .why{grid-column:1/2;color:var(--muted);font-size:12.5px;line-height:1.35}
+  .bar{
+    grid-column:1/3;height:3px;background:var(--panel-2);border-radius:2px;overflow:hidden;margin-top:5px;
+  }
+  .bar i{display:block;height:100%;background:var(--signal);border-radius:2px}
+
+  /* ---- table ---- */
+  .tablewrap{margin-top:32px;overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
+  th,td{padding:9px 10px;text-align:right;white-space:nowrap}
+  th:first-child,td:first-child{text-align:left;padding-left:0}
+  th:last-child,td:last-child{padding-right:0}
+  thead th{
+    color:var(--muted);font-weight:520;font-size:12.5px;
+    border-bottom:1px solid var(--rule);cursor:pointer;user-select:none;
+  }
+  thead th:hover,thead th:focus-visible{color:var(--text)}
+  thead th[aria-sort]{color:var(--text)}
+  tbody tr{border-bottom:1px solid #1C2C3C}
+  td.ccy{font-weight:580}
+  td.ccy small{color:var(--muted);font-weight:400;font-size:12px;margin-left:7px}
+  .pct{position:relative}
+  .pct span{position:relative;z-index:1}
+  .pct::before{
+    content:"";position:absolute;right:10px;top:50%;transform:translateY(-50%);
+    height:15px;background:var(--signal-dim);border-radius:1px;
+    width:calc(var(--w) * 0.46px);
+  }
+  .up{color:#6FD3A8}
+  .dn{color:#EE7C6A}
+
+  /* ---- footer / states ---- */
+  footer{margin-top:40px;padding-top:18px;border-top:1px solid var(--rule);color:var(--muted);font-size:12.5px;line-height:1.6}
+  footer p{margin:0 0 9px;max-width:70ch}
+  footer a{color:var(--text)}
+  .state{
+    padding:44px 20px;text-align:center;color:var(--muted);font-size:14.5px;
+  }
+  .state button{
+    margin-top:14px;background:none;border:1px solid var(--rule);color:var(--text);
+    font:inherit;font-size:14px;padding:8px 16px;border-radius:3px;cursor:pointer;
+  }
+  .state button:hover{border-color:var(--muted)}
+  :focus-visible{outline:2px solid var(--signal);outline-offset:2px}
+  .hidden{display:none}
+  @media (max-width:560px){
+    .trace-head{flex-direction:column;gap:10px}
+    .reading{text-align:left}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .num,.regime,.bar i{transition:color .5s ease,background-color .5s ease}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="masthead">
+    <h1>Foreign exchange stress</h1>
+    <div class="stamp" id="stamp"><span class="dot"></span>Loading rate history…</div>
+  </div>
+  <nav>
+    <a href="./carry.html">Carry unwind monitor</a>
+    <a href="./dollar.html">Dollar panel</a>
+  </nav>
+
+  <div id="loading" class="state">Pulling two years of daily rates from the European Central Bank…</div>
+
+  <div id="failed" class="state hidden">
+    The rate feed didn't respond. It may be briefly down, or your network may be blocking it.
+    <br><button id="retry">Try again</button>
+  </div>
+
+  <main id="app" class="hidden">
+
+    <section class="trace">
+      <div class="trace-head">
+        <p>One composite reading, 0 to 100, built from how today's currency moves compare with their own past year. Higher means conditions are more unusual than normal.</p>
+        <div class="reading">
+          <span class="num" id="score">–</span>
+          <span class="regime" id="regime"></span>
+        </div>
+      </div>
+      <svg class="chart" id="chart" viewBox="0 0 700 200" preserveAspectRatio="none" role="img" aria-label="Composite stress index over the past year"></svg>
+    </section>
+
+    <section class="drivers">
+      <h2 class="sec-h">What's moving the reading</h2>
+      <p class="sec-p">Four independent measures, each scored against its own history. The composite is their average.</p>
+      <div id="drivers"></div>
+    </section>
+
+    <section class="tablewrap">
+      <h2 class="sec-h">Currencies against the dollar</h2>
+      <p class="sec-p">Tap a column heading to sort.</p>
+      <table>
+        <thead>
+          <tr>
+            <th data-k="code" scope="col">Currency</th>
+            <th data-k="spot" scope="col">Rate</th>
+            <th data-k="d1" scope="col">1 day</th>
+            <th data-k="d20" scope="col">20 day</th>
+            <th data-k="vol" scope="col">Volatility</th>
+            <th data-k="pct" scope="col">vs own year</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </section>
+
+    <footer>
+      <p>Rates are the European Central Bank's daily reference fixings, published once each business day at about 16:00 Central European Time, via the free Frankfurter API. The page re-checks every 15 minutes, so it stays current with the feed — but the feed itself is daily, not tick-by-tick. Weekends and holidays show Friday's reading.</p>
+      <p>This is a rough gauge built from spot rates alone. Professional stress measures also read option-implied volatility, cross-currency basis, and funding spreads, none of which are free. Treat it as a thermometer, not a trading signal.</p>
+      <p id="src"></p>
+    </footer>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   Configuration
+   ============================================================ */
+const CCY = {
+  EUR:"Euro", JPY:"Japanese yen", GBP:"British pound", CHF:"Swiss franc",
+  CAD:"Canadian dollar", AUD:"Australian dollar", NZD:"New Zealand dollar",
+  SEK:"Swedish krona", NOK:"Norwegian krone", PLN:"Polish zloty",
+  CZK:"Czech koruna", HUF:"Hungarian forint", KRW:"South Korean won",
+  MXN:"Mexican peso", BRL:"Brazilian real", ZAR:"South African rand",
+  TRY:"Turkish lira", INR:"Indian rupee", CNY:"Chinese yuan",
+  ILS:"Israeli shekel", SGD:"Singapore dollar"
+};
+const CODES = Object.keys(CCY);
+const HOSTS = ["https://api.frankfurter.dev/v1", "https://api.frankfurter.app"];
+const LOOKBACK_DAYS = 760;   // ~2 calendar years, ~520 business days
+const RANK_WINDOW   = 250;   // ~1 business year for percentile ranking
+const VOL_WINDOW    = 20;    // ~1 month realised vol
+const REFRESH_MS    = 15 * 60 * 1000;
+
+/* ============================================================
+   Analytics — pure functions
+   ============================================================ */
+
+function logReturns(series){
+  const out = [];
+  for (let i = 1; i < series.length; i++){
+    const a = series[i-1], b = series[i];
+    out.push((a > 0 && b > 0) ? Math.log(b / a) : 0);
+  }
+  return out;
+}
+
+function stdev(arr){
+  const n = arr.length;
+  if (n < 2) return 0;
+  let m = 0;
+  for (const v of arr) m += v;
+  m /= n;
+  let s = 0;
+  for (const v of arr) s += (v - m) * (v - m);
+  return Math.sqrt(s / (n - 1));
+}
+
+// Annualised realised volatility, in percent, ending at each index.
+function rollingVol(rets, win){
+  const out = new Array(rets.length).fill(null);
+  for (let i = win - 1; i < rets.length; i++){
+    out[i] = stdev(rets.slice(i - win + 1, i + 1)) * Math.sqrt(252) * 100;
+  }
+  return out;
+}
+
+// Where does `value` sit within `hist`? Returns 0–100.
+function percentileRank(value, hist){
+  const clean = hist.filter(v => v !== null && Number.isFinite(v));
+  if (clean.length < 20) return null;
+  let below = 0;
+  for (const v of clean) if (v < value) below++;
+  return (below / clean.length) * 100;
+}
+
+// Percentile-rank every point against the RANK_WINDOW points before it.
+function trailingRanks(series, win){
+  const out = new Array(series.length).fill(null);
+  for (let i = 0; i < series.length; i++){
+    if (series[i] === null) continue;
+    const hist = series.slice(Math.max(0, i - win), i);
+    out[i] = percentileRank(series[i], hist);
+  }
+  return out;
+}
+
+// Cross-sectional spread of 5-day moves — are currencies splitting apart?
+function dispersion(retsByCcy, n){
+  const out = new Array(n).fill(null);
+  for (let i = 4; i < n; i++){
+    const moves = [];
+    for (const r of retsByCcy){
+      let s = 0, ok = true;
+      for (let k = 0; k < 5; k++){
+        const v = r[i - k];
+        if (v === undefined) { ok = false; break; }
+        s += v;
+      }
+      if (ok) moves.push(s);
+    }
+    out[i] = moves.length > 3 ? stdev(moves) * 100 : null;
+  }
+  return out;
+}
+
+// Equal-weighted dollar index from the log returns of every pair.
+function dollarIndex(retsByCcy, n){
+  const lvl = new Array(n).fill(0);
+  for (let i = 0; i < n; i++){
+    let s = 0, c = 0;
+    for (const r of retsByCcy){
+      if (r[i] !== undefined){ s += r[i]; c++; }
+    }
+    lvl[i] = (i > 0 ? lvl[i-1] : 0) + (c ? s / c : 0);
+  }
+  return lvl;
+}
+
+// Share of currencies with a 1-day move beyond 2x their trailing 60-day sigma.
+function tailBreadth(retsByCcy, n){
+  const out = new Array(n).fill(null);
+  for (let i = 60; i < n; i++){
+    let hit = 0, tot = 0;
+    for (const r of retsByCcy){
+      const win = r.slice(i - 60, i);
+      const sd = stdev(win);
+      if (sd <= 0) continue;
+      tot++;
+      if (Math.abs(r[i]) > 2 * sd) hit++;
+    }
+    out[i] = tot ? (hit / tot) * 100 : null;
+  }
+  return out;
+}
+
+/* Build every sub-index and the composite, for every date. */
+function buildIndex(dates, byCcy){
+  const codes = Object.keys(byCcy);
+  const retsByCcy = codes.map(c => logReturns(byCcy[c]));
+  const n = retsByCcy[0] ? retsByCcy[0].length : 0;   // returns are 1 shorter than dates
+  const retDates = dates.slice(1);
+
+  // 1. Volatility: average of each pair's own vol percentile.
+  const volRanks = retsByCcy.map(r => trailingRanks(rollingVol(r, VOL_WINDOW), RANK_WINDOW));
+  const volIdx = new Array(n).fill(null);
+  const volNow = {};
+  for (let i = 0; i < n; i++){
+    let s = 0, c = 0;
+    for (const vr of volRanks) if (vr[i] !== null){ s += vr[i]; c++; }
+    volIdx[i] = c ? s / c : null;
+  }
+  codes.forEach((c, j) => {
+    const v = rollingVol(retsByCcy[j], VOL_WINDOW);
+    volNow[c] = { vol: v[n-1], pct: volRanks[j][n-1] };
+  });
+
+  // 2. Dispersion.
+  const dispIdx = trailingRanks(dispersion(retsByCcy, n), RANK_WINDOW);
+
+  // 3. Dollar trend: size of the 20-day move in the dollar index.
+  const dxy = dollarIndex(retsByCcy, n);
+  const swing = new Array(n).fill(null);
+  for (let i = VOL_WINDOW; i < n; i++) swing[i] = Math.abs(dxy[i] - dxy[i - VOL_WINDOW]) * 100;
+  const trendIdx = trailingRanks(swing, RANK_WINDOW);
+
+  // 4. Outsized-move breadth.
+  const tailIdx = trailingRanks(tailBreadth(retsByCcy, n), RANK_WINDOW);
+
+  const composite = new Array(n).fill(null);
+  for (let i = 0; i < n; i++){
+    const parts = [volIdx[i], dispIdx[i], trendIdx[i], tailIdx[i]].filter(v => v !== null);
+    composite[i] = parts.length === 4 ? parts.reduce((a,b)=>a+b,0) / 4 : null;
+  }
+
+  return {
+    retDates, composite, n,
+    subs: {
+      volatility: volIdx, dispersion: dispIdx,
+      trend: trendIdx, tails: tailIdx
+    },
+    volNow, retsByCcy, codes
+  };
+}
+
+/* ============================================================
+   Presentation
+   ============================================================ */
+
+const REGIMES = [
+  { max: 25,  name: "Calm",     color: "#4FD1C5" },
+  { max: 50,  name: "Ordinary", color: "#7FC7A4" },
+  { max: 70,  name: "Restless", color: "#E8B84B" },
+  { max: 85,  name: "Strained", color: "#F2854B" },
+  { max: 101, name: "Stressed", color: "#E4574A" }
+];
+const regimeFor = v => REGIMES.find(r => v < r.max) || REGIMES[REGIMES.length-1];
+
+const fmtDate = iso => {
+  const d = new Date(iso + "T00:00:00Z");
+  return d.toLocaleDateString(undefined, {day:"numeric", month:"short", year:"numeric", timeZone:"UTC"});
+};
+const round = (v, p=0) => v === null || !Number.isFinite(v) ? "–" : v.toFixed(p);
+const signed = v => v === null || !Number.isFinite(v) ? "–" : (v > 0 ? "+" : "") + v.toFixed(2) + "%";
+
+function drawChart(dates, values){
+  const svg = document.getElementById("chart");
+  const W = 700, H = 200, padB = 18;
+  const pts = [];
+  for (let i = 0; i < values.length; i++){
+    if (values[i] !== null) pts.push([i, values[i], dates[i]]);
+  }
+  if (pts.length < 2){ svg.innerHTML = ""; return; }
+
+  const i0 = pts[0][0], i1 = pts[pts.length-1][0];
+  const x = i => ((i - i0) / (i1 - i0)) * W;
+  const y = v => (H - padB) - (v / 100) * (H - padB - 8);
+
+  // Regime thresholds as hairlines rather than filled bands.
+  let g = "";
+  [25, 50, 70, 85].forEach(v => {
+    g += `<line x1="0" y1="${y(v)}" x2="${W}" y2="${y(v)}" stroke="#25394D" stroke-width="1" stroke-dasharray="2 4"/>`;
+    g += `<text class="band-label" x="4" y="${y(v) - 3}">${v}</text>`;
+  });
+
+  const line = pts.map((p,k) => (k ? "L" : "M") + x(p[0]).toFixed(1) + " " + y(p[1]).toFixed(1)).join(" ");
+  const area = line + ` L${W} ${H-padB} L0 ${H-padB} Z`;
+
+  g += `<path d="${area}" fill="var(--signal)" opacity="0.10"/>`;
+  g += `<path d="${line}" fill="none" stroke="var(--signal)" stroke-width="1.6" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+
+  const last = pts[pts.length-1];
+  g += `<line x1="${W-1}" y1="8" x2="${W-1}" y2="${H-padB}" stroke="var(--signal)" stroke-width="1" opacity="0.4"/>`;
+  g += `<circle cx="${(W-1).toFixed(1)}" cy="${y(last[1]).toFixed(1)}" r="3.5" fill="var(--signal)"/>`;
+
+  // time axis: first, middle, last
+  [pts[0], pts[Math.floor(pts.length/2)], last].forEach((p, k) => {
+    const anchor = k === 0 ? "start" : k === 2 ? "end" : "middle";
+    const px = k === 0 ? 2 : k === 2 ? W - 2 : x(p[0]);
+    g += `<text class="axis-t" x="${px}" y="${H-4}" text-anchor="${anchor}">${fmtDate(p[2])}</text>`;
+  });
+
+  svg.innerHTML = g;
+}
+
+const DRIVER_COPY = {
+  volatility: ["Day-to-day swings", "How wide each currency's recent moves are, next to its own normal."],
+  dispersion: ["Currencies splitting apart", "Whether they're moving together or going their own separate ways."],
+  trend:      ["Dollar on the march", "The size of the dollar's month-long push, up or down."],
+  tails:      ["Outsized single days", "How many currencies just posted a move far beyond their usual range."]
+};
+
+function renderDrivers(subs, i){
+  const el = document.getElementById("drivers");
+  el.innerHTML = Object.keys(DRIVER_COPY).map(k => {
+    const v = subs[k][i];
+    const w = v === null ? 0 : Math.max(0, Math.min(100, v));
+    return `<div class="driver">
+      <div class="nm">${DRIVER_COPY[k][0]}</div>
+      <div class="val">${round(v)}</div>
+      <div class="why">${DRIVER_COPY[k][1]}</div>
+      <div class="bar"><i style="width:${w}%"></i></div>
+    </div>`;
+  }).join("");
+}
+
+let tableRows = [], sortKey = "pct", sortDir = -1;
+
+function renderTable(){
+  const rows = tableRows.slice().sort((a,b) => {
+    const av = a[sortKey], bv = b[sortKey];
+    if (typeof av === "string") return sortDir * av.localeCompare(bv);
+    if (av === null) return 1;
+    if (bv === null) return -1;
+    return sortDir * (av - bv);
+  });
+  document.getElementById("rows").innerHTML = rows.map(r => `
+    <tr>
+      <td class="ccy">${r.code}<small>${CCY[r.code]}</small></td>
+      <td>${r.spot === null ? "–" : r.spot.toLocaleString(undefined,{maximumFractionDigits: r.spot > 100 ? 1 : 4})}</td>
+      <td class="${r.d1 > 0 ? "up" : r.d1 < 0 ? "dn" : ""}">${signed(r.d1)}</td>
+      <td class="${r.d20 > 0 ? "up" : r.d20 < 0 ? "dn" : ""}">${signed(r.d20)}</td>
+      <td>${round(r.vol, 1)}%</td>
+      <td class="pct" style="--w:${r.pct === null ? 0 : r.pct}"><span>${round(r.pct)}</span></td>
+    </tr>`).join("");
+  document.querySelectorAll("thead th").forEach(th => {
+    if (th.dataset.k === sortKey) th.setAttribute("aria-sort", sortDir < 0 ? "descending" : "ascending");
+    else th.removeAttribute("aria-sort");
+  });
+}
+
+document.querySelectorAll("thead th").forEach(th => {
+  th.tabIndex = 0;
+  const go = () => {
+    const k = th.dataset.k;
+    if (k === sortKey) sortDir *= -1; else { sortKey = k; sortDir = k === "code" ? 1 : -1; }
+    renderTable();
+  };
+  th.addEventListener("click", go);
+  th.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " "){ e.preventDefault(); go(); } });
+});
+
+/* ============================================================
+   Data
+   ============================================================ */
+
+async function fetchWindow(){
+  const end = new Date();
+  const start = new Date(end.getTime() - LOOKBACK_DAYS * 86400000);
+  const iso = d => d.toISOString().slice(0,10);
+  const qs = `${iso(start)}..${iso(end)}?base=USD&symbols=${CODES.join(",")}`;
+
+  let lastErr;
+  for (const host of HOSTS){
+    try {
+      const res = await fetch(`${host}/${qs}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(res.status);
+      const j = await res.json();
+      if (j && j.rates && Object.keys(j.rates).length > 100) return j;
+      throw new Error("short series");
+    } catch (e){ lastErr = e; }
+  }
+  throw lastErr;
+}
+
+// Turn {date:{CCY:rate}} into aligned arrays, dropping currencies with gaps.
+function shape(raw){
+  const dates = Object.keys(raw.rates).sort();
+  const byCcy = {};
+  for (const c of CODES){
+    const arr = [];
+    let ok = true;
+    for (const d of dates){
+      const v = raw.rates[d][c];
+      if (v === undefined || v === null || !(v > 0)){
+        if (arr.length) arr.push(arr[arr.length-1]);   // carry last value over a one-off gap
+        else { ok = false; break; }
+      } else arr.push(v);
+    }
+    if (ok && arr.length === dates.length) byCcy[c] = arr;
+  }
+  return { dates, byCcy };
+}
+
+function paint(raw){
+  const { dates, byCcy } = shape(raw);
+  const R = buildIndex(dates, byCcy);
+  const i = R.n - 1;
+
+  const score = R.composite[i];
+  const reg = regimeFor(score === null ? 0 : score);
+  document.documentElement.style.setProperty("--signal", reg.color);
+  document.documentElement.style.setProperty("--signal-dim", reg.color + "33");
+  document.getElementById("score").textContent = round(score);
+  document.getElementById("regime").textContent = reg.name;
+
+  const asOf = R.retDates[i];
+  document.getElementById("stamp").innerHTML =
+    `<span class="dot"></span>Rates for <b>${fmtDate(asOf)}</b> · checked ${new Date().toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}`;
+
+  // one year of trace
+  const from = Math.max(0, R.n - 252);
+  drawChart(R.retDates.slice(from), R.composite.slice(from));
+  renderDrivers(R.subs, i);
+
+  tableRows = R.codes.map((c, j) => {
+    const s = byCcy[c];
+    const r = R.retsByCcy[j];
+    const d20 = r.length > 20 ? (Math.exp(r.slice(-20).reduce((a,b)=>a+b,0)) - 1) * 100 : null;
+    return {
+      code: c,
+      spot: s[s.length-1],
+      d1: (Math.exp(r[r.length-1]) - 1) * 100,
+      d20,
+      vol: R.volNow[c].vol,
+      pct: R.volNow[c].pct
+    };
+  });
+  renderTable();
+
+  document.getElementById("src").textContent =
+    `${R.codes.length} currencies · ${dates.length} business days of history · index scored against the previous ${RANK_WINDOW} trading days.`;
+
+  document.getElementById("loading").classList.add("hidden");
+  document.getElementById("failed").classList.add("hidden");
+  document.getElementById("app").classList.remove("hidden");
+}
+
+async function load(){
+  try {
+    paint(await fetchWindow());
+  } catch (e){
+    console.error(e);
+    if (document.getElementById("app").classList.contains("hidden")){
+      document.getElementById("loading").classList.add("hidden");
+      document.getElementById("failed").classList.remove("hidden");
+    }
+    document.getElementById("stamp").innerHTML = `<span class="dot"></span>Feed unreachable`;
+  }
+}
+
+document.getElementById("retry").addEventListener("click", () => {
+  document.getElementById("failed").classList.add("hidden");
+  document.getElementById("loading").classList.remove("hidden");
+  load();
+});
+
+load();
+setInterval(load, REFRESH_MS);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+</script>
+</body>
+</html><!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FX stress monitor</title>
+<style>
+  :root{
+    --ink:#0C1620;
+    --panel:#13212F;
+    --panel-2:#182B3C;
+    --rule:#25394D;
+    --text:#DCE6F0;
+    --muted:#7C90A4;
+    --signal:#4FD1C5;
+    --signal-dim:#4FD1C533;
+    --grid-max:1080px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:ui-sans-serif,system-ui,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    font-variant-numeric:tabular-nums;
+  }
+  .wrap{max-width:var(--grid-max);margin:0 auto;padding:24px 20px 64px}
+
+  /* ---- masthead ---- */
+  .masthead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px 18px;padding-bottom:16px}
+  .masthead h1{
+    font-size:clamp(20px,2.6vw,26px);
+    font-weight:640;
+    letter-spacing:-0.02em;
+    margin:0;
+  }
+  .stamp{color:var(--muted);font-size:13.5px}
+  .stamp b{color:var(--text);font-weight:560}
+  .dot{
+    width:7px;height:7px;border-radius:50%;
+    background:var(--signal);
+    display:inline-block;margin-right:7px;vertical-align:1px;
+  }
+
   .backlink{display:block;color:var(--muted);font-size:13px;text-decoration:none;padding-bottom:16px}
   .backlink:hover{color:var(--text)}
 
