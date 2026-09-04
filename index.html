@@ -104,6 +104,35 @@
   }
   .bar i{display:block;height:100%;background:var(--signal);border-radius:2px}
 
+  /* ---- positioning ---- */
+  .posn{margin-top:32px}
+  .posn-head{display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+  .posn-read{text-align:right;line-height:1.1;flex:none}
+  .posn-read .num{font-size:34px;font-weight:640;letter-spacing:-0.035em;display:block}
+  .posn-read .lab{font-size:12px;color:var(--muted);display:block;margin-top:2px}
+  .quad{
+    background:var(--panel);border:1px solid var(--rule);border-radius:3px;
+    padding:14px 16px;margin:14px 0 18px;
+  }
+  .quad .q-name{font-size:14.5px;font-weight:600;letter-spacing:-0.01em;margin:0 0 4px}
+  .quad .q-body{margin:0;color:var(--muted);font-size:13px;line-height:1.5;max-width:72ch}
+  .quad .q-axes{
+    margin:9px 0 0;color:var(--muted);font-size:12px;
+    padding-top:9px;border-top:1px solid var(--rule);
+  }
+  .quad .q-axes b{color:var(--text);font-weight:560}
+  .posrow{
+    display:grid;grid-template-columns:1fr auto 52px;gap:3px 14px;align-items:center;
+    padding:9px 0;border-top:1px solid var(--rule);
+  }
+  .posrow:last-child{border-bottom:1px solid var(--rule)}
+  .posrow .nm{font-size:14px;font-weight:540}
+  .posrow .nm small{color:var(--muted);font-weight:400;font-size:12px;margin-left:7px}
+  .posrow .net{font-size:13px;color:var(--muted);text-align:right}
+  .posrow .val{text-align:right;font-size:17px;font-weight:600;letter-spacing:-0.02em}
+  .posrow .bar{grid-column:1/4;margin-top:4px}
+  .posn-miss{color:var(--muted);font-size:13.5px;padding:14px 0;border-top:1px solid var(--rule)}
+
   /* ---- table ---- */
   .tablewrap{margin-top:32px;overflow-x:auto;-webkit-overflow-scrolling:touch}
   table{border-collapse:collapse;width:100%;min-width:520px;font-size:14px}
@@ -146,6 +175,8 @@
   @media (max-width:560px){
     .trace-head{flex-direction:column;gap:10px}
     .reading{text-align:left}
+    .posn-head{flex-direction:column;gap:8px}
+    .posn-read{text-align:left}
   }
   @media (prefers-reduced-motion:no-preference){
     .num,.regime,.bar i{transition:color .5s ease,background-color .5s ease}
@@ -191,6 +222,26 @@
       <div id="drivers"></div>
     </section>
 
+    <section class="posn">
+      <div class="posn-head">
+        <div>
+          <h2 class="sec-h">How crowded the bets are</h2>
+          <p class="sec-p">Everything above describes moves that already happened. This is the one input here that looks forward: how heavily speculators are leaning on each currency, next to how heavily they normally lean. A crowded position doesn't say a move is coming — it says how many forced sellers are stacked behind the exit if one does.</p>
+        </div>
+        <div class="posn-read">
+          <span class="num" id="crowd">–</span>
+          <span class="lab" id="crowd-lab">crowding</span>
+        </div>
+      </div>
+      <div class="quad hidden" id="quad">
+        <p class="q-name" id="q-name"></p>
+        <p class="q-body" id="q-body"></p>
+        <p class="q-axes" id="q-axes"></p>
+      </div>
+      <div id="posrows"></div>
+      <div class="posn-miss hidden" id="posn-miss"></div>
+    </section>
+
     <section class="tablewrap">
       <h2 class="sec-h">Currencies against the dollar</h2>
       <p class="sec-p">Tap a column heading to sort.</p>
@@ -211,7 +262,8 @@
 
     <footer>
       <p>Rates are the European Central Bank's daily reference fixings, published once each business day at about 16:00 Central European Time, via the free Frankfurter API. The page re-checks every 15 minutes, so it stays current with the feed — but the feed itself is daily, not tick-by-tick. Weekends and holidays show Friday's reading.</p>
-      <p>This is a rough gauge built from spot rates alone. Professional stress measures also read option-implied volatility, cross-currency basis, and funding spreads, none of which are free. Treat it as a thermometer, not a trading signal.</p>
+      <p>Positioning comes from the CFTC's Commitments of Traders report, published each Friday afternoon describing where large speculators stood the preceding Tuesday. It is never less than three days old, it covers only the seven currencies with liquid futures contracts rather than all twenty-one above, and it is a stock rather than a flow. It is deliberately kept out of the composite for those reasons — mixing a stale weekly series into a daily index would change what the whole year of history above means.</p>
+      <p>This is a rough gauge built from spot rates and futures positioning. Professional stress measures also read option-implied volatility, cross-currency basis, and funding spreads, none of which are free — the one public series that came close, the CBOE EuroCurrency index, stopped updating in March 2025. Treat all of it as a thermometer, not a trading signal.</p>
       <p id="src"></p>
     </footer>
 
@@ -237,6 +289,44 @@ const LOOKBACK_DAYS = 760;   // ~2 calendar years, ~520 business days
 const RANK_WINDOW   = 250;   // ~1 business year for percentile ranking
 const VOL_WINDOW    = 20;    // ~1 month realised vol
 const REFRESH_MS    = 15 * 60 * 1000;
+
+/* ---- CFTC Commitments of Traders ----------------------------------------
+   Legacy futures-only dataset on the CFTC's Socrata endpoint, which sends
+   permissive CORS headers, so this page stays entirely client-side.
+
+   Contracts are matched on CFTC market code rather than name: the name
+   strings have been revised over the years ("BRITISH POUND STERLING" ->
+   "BRITISH POUND"), the codes have not.
+
+   Weights are a judgement call, not a calibration. JPY carries the most
+   because it is the funding leg of the dominant carry trade — a crowded
+   short yen is the position that unwinds violently. MXN is the classic
+   high-yield destination leg. CNY has no futures contract and is simply
+   absent, which is a real gap. ------------------------------------------ */
+const COT_URL = "https://publicreporting.cftc.gov/resource/6dca-aqww.json";
+const COT_CONTRACTS = {
+  "097741": { code:"JPY", weight:.30 },
+  "099741": { code:"EUR", weight:.20 },
+  "232741": { code:"AUD", weight:.15 },
+  "092741": { code:"CHF", weight:.10 },
+  "096742": { code:"GBP", weight:.10 },
+  "090741": { code:"CAD", weight:.08 },
+  "095741": { code:"MXN", weight:.07 }
+};
+const COT_WINDOW  = 156;   // ~3 years of weekly prints for the percentile
+const COT_MIN_OBS = 30;
+const COT_ROWS    = 5000;  // ~4 years x 7 contracts, with headroom
+
+// Socrata column names, most likely first. The dataset has been through
+// schema revisions, and a hard-coded field name that silently yields null
+// is worse than a loud failure, so each is looked up through candidates.
+const COT_FIELDS = {
+  date:  ["report_date_as_yyyy_mm_dd", "report_date_as_yyyy", "report_date"],
+  code:  ["cftc_contract_market_code"],
+  long:  ["noncomm_positions_long_all", "noncomm_positions_long"],
+  short: ["noncomm_positions_short_all", "noncomm_positions_short"],
+  oi:    ["open_interest_all", "open_interest"]
+};
 
 /* ============================================================
    Analytics — pure functions
@@ -389,6 +479,108 @@ function buildIndex(dates, byCcy){
   };
 }
 
+/* ---- positioning --------------------------------------------------------
+   Net speculative positions are scaled by open interest before ranking.
+   Raw contract counts are not comparable across time — open interest in
+   these contracts has grown several-fold — so an unscaled net position
+   drifts upward forever and every recent week looks like a record.
+
+   Crowding ranks the ABSOLUTE position: a heavily net-short yen and a
+   heavily net-long yen are both crowded, and both carry unwind risk, just
+   in opposite directions. The signed value is kept alongside so the
+   direction is never lost. ---------------------------------------------- */
+
+function resolveCotFields(row){
+  const out = {};
+  for (const key of Object.keys(COT_FIELDS)){
+    const found = COT_FIELDS[key].find(c => c in row);
+    if (!found) return { fields:null, missing:key };
+    out[key] = found;
+  }
+  return { fields:out, missing:null };
+}
+
+function buildPositioning(rows){
+  if (!rows || !rows.length) return null;
+
+  const { fields, missing } = resolveCotFields(rows[0]);
+  if (!fields){
+    console.warn(`COT schema changed — no column for "${missing}". Saw:`, Object.keys(rows[0]));
+    return null;
+  }
+
+  const byCode = {};
+  for (const row of rows){
+    const mkt = row[fields.code];
+    if (!(mkt in COT_CONTRACTS)) continue;
+    const lng = parseFloat(row[fields.long]);
+    const sht = parseFloat(row[fields.short]);
+    const oi  = parseFloat(row[fields.oi]);
+    const date = String(row[fields.date] || "").slice(0,10);
+    if (!date || !Number.isFinite(lng) || !Number.isFinite(sht) || !Number.isFinite(oi) || oi <= 0) continue;
+    (byCode[mkt] = byCode[mkt] || []).push({ date, net: lng - sht, oi, netPct: (lng - sht) / oi * 100 });
+  }
+
+  const items = [];
+  let wsum = 0, acc = 0;
+  for (const mkt of Object.keys(COT_CONTRACTS)){
+    const series = (byCode[mkt] || []).sort((a,b) => a.date.localeCompare(b.date));
+    if (series.length < COT_MIN_OBS) continue;
+
+    const last = series[series.length - 1];
+    const hist = series.slice(-COT_WINDOW - 1, -1).map(p => Math.abs(p.netPct));
+    const crowding = percentileRank(Math.abs(last.netPct), hist);
+    if (crowding === null) continue;
+
+    const meta = COT_CONTRACTS[mkt];
+    items.push({
+      code: meta.code,
+      name: CCY[meta.code] || meta.code,
+      weight: meta.weight,
+      asOf: last.date,
+      netPct: last.netPct,
+      net: last.net,
+      crowding,
+      obs: series.length
+    });
+    acc  += crowding * meta.weight;
+    wsum += meta.weight;
+  }
+
+  if (!items.length) return null;
+  items.sort((a,b) => b.crowding - a.crowding);
+
+  return {
+    composite: acc / wsum,
+    coverage: wsum,
+    asOf: items.map(i => i.asOf).sort().slice(-1)[0],
+    items
+  };
+}
+
+/* The two readings answer different questions, so they are read together
+   rather than averaged. Realised says what the market has been doing;
+   crowding says how much fuel is sitting behind a move if one starts. */
+function quadrantFor(realised, crowding){
+  const hotR = realised >= 50, hotC = crowding >= 50;
+  if (hotR && hotC) return {
+    name: "Moving, and crowded",
+    body: "Conditions are already more unusual than normal, and speculators are leaning hard at the same time. This is the configuration where moves tend to extend rather than fade, because the people who need to exit are all facing the same direction. It says nothing about which way."
+  };
+  if (hotR && !hotC) return {
+    name: "Moving, but positions are light",
+    body: "Currencies are moving unusually, but speculators are not heavily committed. Less forced selling is stacked behind a move here, so dislocations have historically been shorter-lived than they look while they're happening."
+  };
+  if (!hotR && hotC) return {
+    name: "Quiet, but crowded",
+    body: "Nothing much is happening in the spot market while speculators are leaning heavily. Historically the least comfortable of the four readings: quiet conditions invite bigger positions, and the positions are what make the eventual move violent. Worth watching rather than acting on — this state can persist for months."
+  };
+  return {
+    name: "Quiet, and nobody's leaning",
+    body: "Ordinary spot conditions and unremarkable speculative positioning. The state the market spends most of its time in."
+  };
+}
+
 /* ============================================================
    Presentation
    ============================================================ */
@@ -470,6 +662,49 @@ function renderDrivers(subs, i){
   }).join("");
 }
 
+function renderPositioning(P, realised){
+  const rowsEl = document.getElementById("posrows");
+  const missEl = document.getElementById("posn-miss");
+  const quadEl = document.getElementById("quad");
+
+  if (!P){
+    document.getElementById("crowd").textContent = "–";
+    document.getElementById("crowd-lab").textContent = "unavailable";
+    rowsEl.innerHTML = "";
+    quadEl.classList.add("hidden");
+    missEl.classList.remove("hidden");
+    missEl.textContent = "The CFTC positioning feed didn't respond, so this section is showing nothing rather than guessing. Everything above is unaffected — it comes from a different source.";
+    return;
+  }
+
+  missEl.classList.add("hidden");
+  document.getElementById("crowd").textContent = round(P.composite);
+  document.getElementById("crowd-lab").textContent = `crowding · week of ${fmtDate(P.asOf)}`;
+
+  rowsEl.innerHTML = P.items.map(it => {
+    const w = Math.max(0, Math.min(100, it.crowding));
+    const side = it.netPct > 0 ? "net long" : "net short";
+    return `<div class="posrow">
+      <div class="nm">${it.code}<small>${it.name}</small></div>
+      <div class="net">${side} ${signed(it.netPct)} of open interest</div>
+      <div class="val">${round(it.crowding)}</div>
+      <div class="bar"><i style="width:${w}%"></i></div>
+    </div>`;
+  }).join("");
+
+  if (realised === null || !Number.isFinite(realised)){
+    quadEl.classList.add("hidden");
+    return;
+  }
+  const q = quadrantFor(realised, P.composite);
+  document.getElementById("q-name").textContent = q.name;
+  document.getElementById("q-body").textContent = q.body;
+  document.getElementById("q-axes").innerHTML =
+    `Spot conditions <b>${round(realised)}</b> · speculative crowding <b>${round(P.composite)}</b> · ` +
+    `positioning covers ${P.items.length} of 7 futures contracts, ${Math.round(P.coverage*100)}% by weight`;
+  quadEl.classList.remove("hidden");
+}
+
 let tableRows = [], sortKey = "pct", sortDir = -1;
 
 function renderTable(){
@@ -527,6 +762,27 @@ async function fetchWindow(){
     } catch (e){ lastErr = e; }
   }
   throw lastErr;
+}
+
+// The COT report lands once a week, so this is fetched once per page load
+// and cached — refetching it on every 15-minute tick would be pointless
+// traffic against a series that cannot have changed.
+let cotCache = null;
+async function fetchCot(){
+  if (cotCache !== null) return cotCache;
+  const where = `cftc_contract_market_code in('${Object.keys(COT_CONTRACTS).join("','")}')`;
+  const url = `${COT_URL}?$where=${encodeURIComponent(where)}` +
+              `&$order=${encodeURIComponent("report_date_as_yyyy_mm_dd DESC")}` +
+              `&$limit=${COT_ROWS}`;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error(res.status);
+    cotCache = buildPositioning(await res.json());
+  } catch (e){
+    console.warn("CFTC positioning unavailable:", e);
+    cotCache = null;
+  }
+  return cotCache;
 }
 
 // Turn {date:{CCY:rate}} into aligned arrays, dropping currencies with gaps.
@@ -590,6 +846,10 @@ function paint(raw){
   document.getElementById("loading").classList.add("hidden");
   document.getElementById("failed").classList.add("hidden");
   document.getElementById("app").classList.remove("hidden");
+
+  // Positioning is fetched independently and never blocks the page: a dead
+  // CFTC feed hides one section rather than failing the whole render.
+  fetchCot().then(P => renderPositioning(P, score));
 }
 
 async function load(){
