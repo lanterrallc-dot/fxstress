@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Currency Vulnerability Screener</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --base:#0B1922;
+  --panel:#122534;
+  --panel-2:#0E1E2A;
+  --rule:#22404F;
+  --ink:#DBE7EE;
+  --ink-dim:#7C97A6;
+  --calm:#3FA795;
+  --watch:#C9C05A;
+  --warm:#DE9A3C;
+  --hot:#D9524B;
+  --signal:#F0E9DC;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--base);
+  color:var(--ink);
+  font-family:"IBM Plex Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  font-size:15px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+.num{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-variant-numeric:tabular-nums}
+.wrap{max-width:1140px;margin:0 auto;padding:22px 18px 90px}
+a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--rule)}
+a:hover{border-bottom-color:var(--calm)}
+:focus-visible{outline:2px solid var(--calm);outline-offset:2px}
+
+/* masthead */
+.masthead{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;
+  border-bottom:1px solid var(--rule);padding-bottom:14px}
+h1{font-size:26px;font-weight:600;letter-spacing:-0.02em;margin:0}
+.sub{color:var(--ink-dim);font-size:13px;margin:4px 0 0}
+.navlinks{display:flex;gap:14px;font-size:13px;color:var(--ink-dim);flex-wrap:wrap}
+.navlinks a{color:var(--ink-dim)}
+
+/* status strip */
+.status{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;font-size:12px}
+.chip{border:1px solid var(--rule);border-radius:2px;padding:3px 9px;color:var(--ink-dim);background:var(--panel-2)}
+.chip.live{border-color:var(--calm);color:var(--calm)}
+.chip.seed{border-color:var(--warm);color:var(--warm)}
+
+/* hero map */
+.hero{margin:26px 0 6px}
+.hero h2{font-size:15px;font-weight:600;margin:0 0 2px}
+.hero p{color:var(--ink-dim);font-size:13px;margin:0 0 12px;max-width:62ch}
+.mapbox{background:var(--panel-2);border:1px solid var(--rule);border-radius:3px;padding:10px 6px 4px}
+svg{display:block;width:100%;height:auto}
+.gridline{stroke:var(--rule);stroke-width:1}
+.axlabel{fill:var(--ink-dim);font-size:11px;font-family:"IBM Plex Mono",monospace}
+.axtitle{fill:var(--ink-dim);font-size:11.5px}
+.setup-zone{fill:var(--hot);opacity:.10}
+.setup-edge{stroke:var(--hot);stroke-width:1;stroke-dasharray:3 3;fill:none;opacity:.6}
+.zonecap{fill:var(--hot);font-size:11px;opacity:.85}
+.dot{cursor:pointer}
+.dotlabel{fill:var(--ink);font-size:11px;font-family:"IBM Plex Mono",monospace;pointer-events:none}
+
+/* controls */
+.bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:26px 0 12px}
+button{
+  font-family:inherit;font-size:13px;color:var(--ink);background:var(--panel);
+  border:1px solid var(--rule);border-radius:2px;padding:6px 12px;cursor:pointer
+}
+button:hover{border-color:var(--calm)}
+button[aria-pressed="true"]{background:var(--rule);border-color:var(--calm)}
+.spacer{flex:1}
+
+/* list */
+.group{margin:22px 0 0}
+.group h3{font-size:14px;font-weight:600;margin:0 0 2px}
+.group .gnote{color:var(--ink-dim);font-size:12.5px;margin:0 0 10px;max-width:62ch}
+.head,.row{display:grid;grid-template-columns:64px 1fr 70px 64px 64px 76px;gap:10px;align-items:center}
+.head{font-size:11.5px;color:var(--ink-dim);padding:0 10px 6px;border-bottom:1px solid var(--rule)}
+.head span{cursor:pointer}
+.head span:hover{color:var(--ink)}
+.row{
+  padding:11px 10px;border-bottom:1px solid rgba(34,64,79,.55);cursor:pointer;
+  background:none;border-left:0;border-right:0;border-top:0;width:100%;text-align:left;border-radius:0
+}
+.row:hover{background:var(--panel-2);border-color:rgba(34,64,79,.55)}
+.code{font-weight:600;font-size:15px}
+.nm{color:var(--ink-dim);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.score{font-size:17px;font-weight:600;text-align:right}
+.cd{text-align:right;font-size:14px}
+.liq{text-align:right;font-size:14px;color:var(--ink-dim)}
+.band{font-size:11px;text-align:right;white-space:nowrap}
+.flag{color:var(--hot);font-weight:600}
+
+/* detail */
+.detail{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:16px;margin:2px 0 14px}
+.detail h4{margin:0 0 3px;font-size:16px;font-weight:600}
+.dmeta{color:var(--ink-dim);font-size:12.5px;margin:0 0 14px}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:26px}
+.colhead{font-size:12.5px;color:var(--ink-dim);margin:0 0 8px;padding-bottom:5px;border-bottom:1px solid var(--rule)}
+.fac{display:grid;grid-template-columns:1fr 40px;gap:8px;align-items:center;margin-bottom:9px}
+.fac label{font-size:12.5px}
+.fac .w{color:var(--ink-dim);font-size:11.5px}
+.fac input[type=range]{grid-column:1/3;width:100%;margin:0;accent-color:var(--warm)}
+.fac .v{text-align:right;font-size:13px}
+.cx{display:flex;gap:9px;align-items:flex-start;margin-bottom:8px;font-size:12.5px;cursor:pointer}
+.cx input{margin:3px 0 0;accent-color:var(--hot);flex:none}
+.notes{margin-top:14px;font-size:13px;color:var(--ink-dim);border-top:1px solid var(--rule);padding-top:12px}
+textarea{width:100%;background:var(--panel-2);color:var(--ink);border:1px solid var(--rule);border-radius:2px;
+  font-family:inherit;font-size:13px;padding:8px;resize:vertical;min-height:58px}
+
+/* weights */
+.wpanel{background:var(--panel);border:1px solid var(--rule);border-radius:3px;padding:16px;margin:12px 0}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px 18px}
+.wrow{display:grid;grid-template-columns:1fr 58px;gap:8px;align-items:center;font-size:12.5px}
+.wrow input{background:var(--panel-2);color:var(--ink);border:1px solid var(--rule);border-radius:2px;
+  padding:4px 6px;font-family:"IBM Plex Mono",monospace;font-size:13px;text-align:right;width:100%}
+.wsum{margin-top:12px;font-size:12.5px;color:var(--ink-dim)}
+.wsum.bad{color:var(--hot)}
+
+.foot{margin-top:34px;padding-top:14px;border-top:1px solid var(--rule);color:var(--ink-dim);font-size:12.5px;max-width:70ch}
+.msg{font-size:12.5px;color:var(--warm);margin:8px 0 0}
+
+@media (max-width:720px){
+  .cols{grid-template-columns:1fr;gap:20px}
+  .head,.row{grid-template-columns:56px 1fr 58px 46px}
+  .liq,.head .liq{display:none}
+  .band{display:none}
+  .nm{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="masthead">
+  <div>
+    <h1>Currency vulnerability screener</h1>
+    <p class="sub">Weighted 0&ndash;100 vulnerability score, policy-contradiction count, and whether the trade is actually puttable on.</p>
+  </div>
+  <nav class="navlinks">
+    <a href="index.html">FX stress</a>
+    <a href="carry.html">Carry</a>
+    <a href="dollar.html">Dollar</a>
+    <a href="https://lanterrallc-dot.github.io/macro-dashboard/dashboard.html">Macro monitor</a>
+  </nav>
+</div>
+
+<div class="status" id="status"></div>
+
+<section class="hero">
+  <h2>Where the two filters overlap</h2>
+  <p>Vulnerability alone is not a trade. The setup is a high score, a policymaker boxed in by their own commitments, and an instrument you can short at a carry cost you can survive. Only the shaded corner qualifies.</p>
+  <div class="mapbox"><svg id="map" viewBox="0 0 700 430" role="img" aria-label="Scatter of vulnerability score against policy contradiction count"></svg></div>
+</section>
+
+<div class="bar">
+  <button id="f-all" aria-pressed="true">All</button>
+  <button id="f-managed" aria-pressed="false">Pegged &amp; managed</button>
+  <button id="f-float" aria-pressed="false">Floating</button>
+  <span class="spacer"></span>
+  <button id="btn-weights">Edit weights</button>
+  <button id="btn-spot">Fetch recent spot moves</button>
+  <button id="btn-export">Download soros_data.json</button>
+</div>
+<p class="msg" id="msg"></p>
+
+<div class="wpanel" id="wpanel" hidden>
+  <div class="wgrid" id="wgrid"></div>
+  <div class="wsum" id="wsum"></div>
+</div>
+
+<div id="list"></div>
+
+<p class="foot" id="foot"></p>
+
+</div>
+
+<script>
+/* ---------- model definition ---------- */
+
+const FACTORS = [
+  {k:"reserveTrend",  w:20, label:"FX reserve trend",              hint:"Reserves falling rapidly"},
+  {k:"reserveAdeq",   w:15, label:"Reserve adequacy",              hint:"Under 3 months of imports, or thin against short-term external debt"},
+  {k:"realRate",      w:10, label:"Real interest rate",            hint:"Negative, or too low to hold money in"},
+  {k:"currentAcct",   w:10, label:"Current account",               hint:"Large and persistent deficit"},
+  {k:"extDebt",       w:10, label:"External debt / GDP",           hint:"High, especially unhedged USD or EUR"},
+  {k:"stDebtRes",     w:10, label:"Short-term ext. debt / reserves",hint:"Approaching or above 100%"},
+  {k:"valuation",     w:10, label:"FX valuation",                  hint:"Materially overvalued on REER"},
+  {k:"fwdPressure",   w:5,  label:"Forward / spot pressure",       hint:"Forwards persistently price depreciation"},
+  {k:"capFlows",      w:5,  label:"Capital flows",                 hint:"Outflows accelerating"},
+  {k:"domStress",     w:5,  label:"Domestic economic stress",      hint:"Weak growth while rates must stay high"}
+];
+
+const CONTRADICTIONS = [
+  "Currency is pegged or heavily managed",
+  "Currency is probably overvalued",
+  "FX reserves are declining",
+  "High rates are needed to defend the currency",
+  "Those rates are damaging the economy",
+  "Growth or recession pushes policy toward easing",
+  "Capital outflows are increasing",
+  "Short-term external debt is large vs reserves",
+  "Officials are publicly committed to an FX level",
+  "A liquid short can actually be established"
+];
+
+const BANDS = [
+  {min:80, name:"Regime-break",  color:"var(--hot)"},
+  {min:65, name:"High",          color:"var(--warm)"},
+  {min:50, name:"Elevated",      color:"var(--watch)"},
+  {min:30, name:"Watch",         color:"var(--ink)"},
+  {min:0,  name:"Low",           color:"var(--calm)"}
+];
+
+/* ---------- seed data ----------
+   These are my qualitative starting scores, not measured data. Overwrite them from
+   IMF IFS (reserves), IMF WEO (current account), World Bank QEDS / Joint External Debt Hub
+   (external and short-term debt), and BIS REER (valuation). Then export and commit the JSON. */
+
+const SEED = {
+  version: 1,
+  updated: "2026-09-07",
+  origin: "seed",
+  weights: Object.fromEntries(FACTORS.map(f => [f.k, f.w])),
+  currencies: [
+    {code:"HKD", name:"Hong Kong dollar", regime:"Currency board", group:"managed", liquidity:9, carry:"Low; forwards and options deep",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:2,realRate:6,currentAcct:1,extDebt:7,stDebtRes:6,valuation:6,fwdPressure:4,capFlows:6,domStress:8},
+     c:[1,1,0,1,1,1,1,1,1,1],
+     notes:"The textbook contradiction, backed by the strongest balance sheet on the list. Reserves cover the monetary base several times over, so the board breaks on political will, not on arithmetic. Cheap optionality, low expected value."},
+    {code:"CNH", name:"Offshore renminbi", regime:"Managed float vs basket", group:"managed", liquidity:8, carry:"Moderate; onshore-offshore basis moves against shorts",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:3,realRate:6,currentAcct:1,extDebt:2,stDebtRes:3,valuation:4,fwdPressure:6,capFlows:7,domStress:8},
+     c:[1,0,0,0,0,1,1,0,1,1],
+     notes:"Large trade surplus and capital controls sit against domestic deflation and outflow pressure. The state banks are the other side of the trade; squeezes in CNH funding are the standard defence."},
+    {code:"SAR", name:"Saudi riyal", regime:"Peg 3.75", group:"managed", liquidity:7, carry:"Moderate; forward points widen on oil weakness",
+     asof:"seed", f:{reserveTrend:6,reserveAdeq:4,realRate:5,currentAcct:5,extDebt:4,stDebtRes:3,valuation:4,fwdPressure:4,capFlows:4,domStress:4},
+     c:[1,0,1,1,1,1,0,0,1,1],
+     notes:"Reserve drawdown plus heavy sovereign issuance to fund investment programmes. The peg is a policy choice with deep pockets behind it; watch reserves against oil rather than the spot rate."},
+    {code:"AED", name:"UAE dirham", regime:"Peg 3.6725", group:"managed", liquidity:6, carry:"Moderate; forwards thinner than SAR",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:2,realRate:5,currentAcct:1,extDebt:4,stDebtRes:3,valuation:3,fwdPressure:2,capFlows:2,domStress:2},
+     c:[1,0,0,1,0,0,0,0,1,1],
+     notes:"Diversified revenue and large external assets. Included as a peg-basket control rather than a candidate."},
+    {code:"QAR", name:"Qatari riyal", regime:"Peg 3.64", group:"managed", liquidity:5, carry:"High relative to depth; forwards illiquid",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:3,realRate:5,currentAcct:1,extDebt:5,stDebtRes:4,valuation:3,fwdPressure:3,capFlows:3,domStress:2},
+     c:[1,0,0,1,0,0,0,0,1,0],
+     notes:"Bank external funding is the historic pressure point, not the current account. 2017 showed the forward market can gap without spot following."},
+    {code:"EGP", name:"Egyptian pound", regime:"Heavily managed float", group:"managed", liquidity:4, carry:"Very high; NDFs thin and wide",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:6,realRate:5,currentAcct:8,extDebt:8,stDebtRes:8,valuation:6,fwdPressure:7,capFlows:6,domStress:7},
+     c:[1,1,0,1,1,1,1,1,1,0],
+     notes:"Scores high on fundamentals and contradiction, fails the third filter. Gulf deposits and IMF money are the swing variable, and neither is forecastable from price."},
+    {code:"TRY", name:"Turkish lira", regime:"Managed crawl", group:"managed", liquidity:7, carry:"Punitive; the carry is the trade's main risk",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:7,realRate:3,currentAcct:5,extDebt:7,stDebtRes:8,valuation:7,fwdPressure:8,capFlows:5,domStress:6},
+     c:[1,1,0,1,1,1,0,1,1,1],
+     notes:"Net reserves remain weak once swaps are stripped out, but the crawl has been slower than the carry for long stretches. Being right on direction and losing money is the base case here."},
+    {code:"ARS", name:"Argentine peso", regime:"Crawling band", group:"managed", liquidity:3, carry:"Extreme; controls fragment the market",
+     asof:"seed", f:{reserveTrend:5,reserveAdeq:8,realRate:4,currentAcct:5,extDebt:7,stDebtRes:8,valuation:7,fwdPressure:7,capFlows:6,domStress:6},
+     c:[1,1,1,1,1,1,1,1,1,0],
+     notes:"Highest raw vulnerability, lowest tradability. Parallel rates and capital controls mean the official rate is not the exposure you get."},
+    {code:"BRL", name:"Brazilian real", regime:"Free float", group:"float", liquidity:9, carry:"Very negative for shorts; high real rates",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:2,realRate:1,currentAcct:5,extDebt:4,stDebtRes:2,valuation:3,fwdPressure:4,capFlows:4,domStress:5},
+     c:[0,0,0,1,1,0,0,0,0,1],
+     notes:"Fiscal risk is the story, not external solvency. Real rates make a short expensive to hold and the float absorbs shocks the peg cases cannot."},
+    {code:"MXN", name:"Mexican peso", regime:"Free float", group:"float", liquidity:10, carry:"Negative for shorts",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:3,realRate:1,currentAcct:3,extDebt:4,stDebtRes:3,valuation:5,fwdPressure:4,capFlows:4,domStress:5},
+     c:[0,1,0,0,1,1,0,0,0,1],
+     notes:"Rich on REER after years of carry inflows, which is a positioning risk rather than a solvency one. Trade and political headlines drive it more than the balance of payments."},
+    {code:"ZAR", name:"South African rand", regime:"Free float", group:"float", liquidity:9, carry:"Meaningfully negative for shorts",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:5,realRate:2,currentAcct:4,extDebt:5,stDebtRes:5,valuation:3,fwdPressure:5,capFlows:5,domStress:6},
+     c:[0,0,0,1,1,1,1,0,0,1],
+     notes:"Thin reserves for the size of the market, but a clean float and no defended level. Behaves as a global risk proxy."},
+    {code:"KRW", name:"Korean won", regime:"Float with intervention", group:"float", liquidity:8, carry:"Low; NDF market deep",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:4,realRate:4,currentAcct:1,extDebt:4,stDebtRes:4,valuation:3,fwdPressure:5,capFlows:5,domStress:5},
+     c:[1,0,1,0,0,1,1,0,1,1],
+     notes:"Persistent outbound portfolio flows from domestic savers, plus visible smoothing operations. Current account surplus caps how far the fundamental case runs."},
+    {code:"IDR", name:"Indonesian rupiah", regime:"Float with intervention", group:"float", liquidity:7, carry:"Negative for shorts; NDF costs add up",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:5,realRate:2,currentAcct:3,extDebt:4,stDebtRes:5,valuation:3,fwdPressure:5,capFlows:5,domStress:4},
+     c:[1,0,1,1,1,1,1,0,1,1],
+     notes:"Bank Indonesia defends actively and holds a large share of the local bond market. Foreign ownership of local debt is the transmission channel to watch."},
+    {code:"INR", name:"Indian rupee", regime:"Tightly managed float", group:"managed", liquidity:6, carry:"High; forward points wide",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:2,realRate:3,currentAcct:4,extDebt:3,stDebtRes:4,valuation:5,fwdPressure:5,capFlows:4,domStress:2},
+     c:[1,1,0,0,0,1,0,0,1,1],
+     notes:"Very large reserves and a central bank that manages volatility rather than level. REER richness builds slowly and unwinds in steps, which is hard to time."},
+    {code:"PHP", name:"Philippine peso", regime:"Float with intervention", group:"float", liquidity:6, carry:"Negative for shorts",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:4,realRate:3,currentAcct:6,extDebt:3,stDebtRes:3,valuation:3,fwdPressure:5,capFlows:4,domStress:3},
+     c:[1,0,1,0,0,1,0,0,1,0],
+     notes:"Structural trade deficit financed by remittances and outsourcing receipts, which are stable but not infinite. Reserve cover is comfortable."},
+    {code:"THB", name:"Thai baht", regime:"Float with intervention", group:"float", liquidity:8, carry:"Low; the classic 1997 case, inverted",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:1,realRate:3,currentAcct:1,extDebt:3,stDebtRes:3,valuation:4,fwdPressure:3,capFlows:4,domStress:6},
+     c:[0,1,0,0,0,1,0,0,0,1],
+     notes:"Now the opposite of 1997: surplus, heavy reserves, weak domestic demand. Any pressure comes from tourism and gold flows, not external funding."},
+    {code:"PLN", name:"Polish zloty", regime:"Free float", group:"float", liquidity:8, carry:"Slightly negative for shorts",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:3,realRate:2,currentAcct:3,extDebt:4,stDebtRes:3,valuation:6,fwdPressure:3,capFlows:3,domStress:3},
+     c:[0,1,0,0,0,1,0,0,0,1],
+     notes:"Strong on REER after EU inflows and rate differentials. A valuation story, not a crisis one."},
+    {code:"HUF", name:"Hungarian forint", regime:"Free float", group:"float", liquidity:7, carry:"Negative for shorts; rates held high",
+     asof:"seed", f:{reserveTrend:4,reserveAdeq:5,realRate:3,currentAcct:3,extDebt:6,stDebtRes:5,valuation:5,fwdPressure:5,capFlows:4,domStress:5},
+     c:[0,1,0,1,1,1,0,0,1,1],
+     notes:"The cleanest floating candidate: high external debt, weak growth, rates held up to protect the currency, and public sensitivity to the level. EU funds are the offset."},
+    {code:"CZK", name:"Czech koruna", regime:"Free float", group:"float", liquidity:7, carry:"Roughly flat",
+     asof:"seed", f:{reserveTrend:2,reserveAdeq:1,realRate:2,currentAcct:2,extDebt:3,stDebtRes:3,valuation:4,fwdPressure:2,capFlows:2,domStress:3},
+     c:[0,0,0,0,0,0,0,0,0,1],
+     notes:"Included as a low-vulnerability anchor for the scale. Huge reserves from the old intervention regime."},
+    {code:"JPY", name:"Japanese yen", regime:"Free float", group:"float", liquidity:10, carry:"Was the funding currency; shifting",
+     asof:"seed", f:{reserveTrend:3,reserveAdeq:1,realRate:8,currentAcct:1,extDebt:2,stDebtRes:2,valuation:2,fwdPressure:6,capFlows:5,domStress:4},
+     c:[0,0,0,0,0,0,1,0,1,1],
+     notes:"Scores low by design and the score is right. Japan is the world's largest net creditor and the yen is already cheap on REER, so this is a rate-differential and positioning trade, not a vulnerability one. Do not read its number on the same axis as the pegs."}
+  ]
+};
+
+/* ---------- state ---------- */
+
+let DATA = null;
+let filter = "all";
+let sortKey = "score";
+let open = null;
+let spot = null;
+
+const $ = id => document.getElementById(id);
+const clamp = (n,a,b) => Math.max(a, Math.min(b, n));
+
+function score(c){
+  let s = 0;
+  for (const f of FACTORS) s += (Number(c.f[f.k]) || 0) / 10 * (Number(DATA.weights[f.k]) || 0);
+  return s;
+}
+function contradiction(c){ return c.c.reduce((a,b)=>a+(b?1:0),0); }
+function band(s){ return BANDS.find(b => s >= b.min) || BANDS[BANDS.length-1]; }
+function shortable(c){ return c.liquidity >= 6; }
+function alerted(c){ return score(c) >= 65 && contradiction(c) >= 8 && shortable(c); }
+function watching(c){ return !alerted(c) && score(c) >= 50 && contradiction(c) >= 6; }
+function weightSum(){ return FACTORS.reduce((a,f)=>a+(Number(DATA.weights[f.k])||0),0); }
+
+/* ---------- load ---------- */
+
+async function load(){
+  try{
+    const r = await fetch("soros_data.json", {cache:"no-store"});
+    if(!r.ok) throw new Error(r.status);
+    const j = await r.json();
+    if(!j.currencies || !j.currencies.length) throw new Error("empty");
+    DATA = j;
+    DATA.origin = "file";
+  }catch(e){
+    DATA = JSON.parse(JSON.stringify(SEED));
+    DATA.origin = "seed";
+  }
+  for(const f of FACTORS) if(DATA.weights[f.k] === undefined) DATA.weights[f.k] = f.w;
+  renderAll();
+}
+
+/* ---------- render ---------- */
+
+function renderStatus(){
+  const live = DATA.origin === "file";
+  $("status").innerHTML =
+    `<span class="chip ${live?'live':'seed'}">${live ? 'Scores from soros_data.json' : 'Scores from built-in seed values'}</span>` +
+    `<span class="chip">Data as of ${DATA.updated || 'unset'}</span>` +
+    `<span class="chip">${DATA.currencies.length} currencies</span>` +
+    (spot ? `<span class="chip live">Spot moves fetched</span>` : "");
+}
+
+function renderMap(){
+  const W=700, H=430, L=54, R=18, T=22, B=44;
+  const x = cd => L + (cd/10) * (W-L-R);
+  const y = s  => (H-B) - (s/100) * (H-B-T);
+  let g = "";
+  g += `<rect class="setup-zone" x="${x(8)}" y="${y(100)}" width="${x(10)-x(8)}" height="${y(65)-y(100)}"/>`;
+  g += `<path class="setup-edge" d="M ${x(8)} ${y(100)} L ${x(8)} ${y(65)} L ${x(10)} ${y(65)}"/>`;
+  g += `<text class="zonecap" x="${x(8)-6}" y="${y(97)}" text-anchor="end">the setup</text>`;
+  for(let s=0; s<=100; s+=25){
+    g += `<line class="gridline" x1="${L}" y1="${y(s)}" x2="${W-R}" y2="${y(s)}" opacity="${s===0?1:.45}"/>`;
+    g += `<text class="axlabel" x="${L-8}" y="${y(s)+4}" text-anchor="end">${s}</text>`;
+  }
+  for(let c=0; c<=10; c+=2){
+    g += `<line class="gridline" x1="${x(c)}" y1="${T}" x2="${x(c)}" y2="${H-B}" opacity="${c===0?1:.25}"/>`;
+    g += `<text class="axlabel" x="${x(c)}" y="${H-B+18}" text-anchor="middle">${c}</text>`;
+  }
+  g += `<text class="axtitle" x="${(L+W-R)/2}" y="${H-8}" text-anchor="middle">Policy contradictions met (of 10)</text>`;
+  g += `<text class="axtitle" transform="translate(14 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle">Vulnerability score</text>`;
+
+  const rows = view();
+  for(const c of rows){
+    const s = score(c), cd = contradiction(c);
+    const col = alerted(c) ? "var(--hot)" : watching(c) ? "var(--warm)" : band(s).color;
+    const r = shortable(c) ? 6 : 4;
+    const fill = shortable(c) ? col : "none";
+    g += `<g class="dot" data-code="${c.code}" tabindex="0" role="button" aria-label="${c.code}, score ${s.toFixed(0)}, ${cd} contradictions">`;
+    g += `<circle cx="${x(cd)}" cy="${y(s)}" r="${r}" fill="${fill}" stroke="${col}" stroke-width="1.5"/>`;
+    g += `<text class="dotlabel" x="${x(cd)+10}" y="${y(s)+4}">${c.code}</text></g>`;
+  }
+  $("map").innerHTML = g;
+  $("map").querySelectorAll(".dot").forEach(d=>{
+    const go = () => { open = (open === d.dataset.code) ? null : d.dataset.code; renderList();
+      const el = document.getElementById("d-"+d.dataset.code); if(el) el.scrollIntoView({block:"center"}); };
+    d.addEventListener("click", go);
+    d.addEventListener("keydown", e => { if(e.key==="Enter"||e.key===" "){ e.preventDefault(); go(); } });
+  });
+}
+
+function view(){
+  let rows = DATA.currencies.slice();
+  if(filter === "managed") rows = rows.filter(c=>c.group==="managed");
+  if(filter === "float")   rows = rows.filter(c=>c.group==="float");
+  const key = {score:c=>-score(c), cd:c=>-contradiction(c), liq:c=>-c.liquidity, code:c=>c.code};
+  rows.sort((a,b)=>{ const ka=key[sortKey](a), kb=key[sortKey](b);
+    return typeof ka === "string" ? ka.localeCompare(kb) : ka-kb; });
+  return rows;
+}
+
+function rowHTML(c){
+  const s = score(c), cd = contradiction(c), bd = band(s);
+  const mark = alerted(c) ? ' <span class="flag">alert</span>' : watching(c) ? ' <span style="color:var(--warm)">watch</span>' : '';
+  const sp = spot && spot[c.code] !== undefined
+    ? `<span class="num" style="color:${spot[c.code]>0?'var(--warm)':'var(--calm)'}"> ${spot[c.code]>0?'+':''}${spot[c.code].toFixed(1)}%</span>` : '';
+  return `<button class="row" data-code="${c.code}" aria-expanded="${open===c.code}">
+    <span class="code num">${c.code}</span>
+    <span class="nm">${c.name} &middot; ${c.regime}${sp}</span>
+    <span class="score num" style="color:${bd.color}">${s.toFixed(0)}</span>
+    <span class="cd num">${cd}/10</span>
+    <span class="liq num">${c.liquidity}</span>
+    <span class="band" style="color:${bd.color}">${bd.name}${mark}</span>
+  </button>`;
+}
+
+function detailHTML(c){
+  const facs = FACTORS.map(f=>`
+    <div class="fac">
+      <label for="s-${c.code}-${f.k}">${f.label} <span class="w num">${DATA.weights[f.k]}%</span></label>
+      <span class="v num" id="v-${c.code}-${f.k}">${c.f[f.k]}</span>
+      <input type="range" min="0" max="10" step="1" value="${c.f[f.k]}"
+             id="s-${c.code}-${f.k}" data-code="${c.code}" data-fac="${f.k}"
+             aria-label="${f.label}: ${f.hint}">
+    </div>`).join("");
+  const cxs = CONTRADICTIONS.map((t,i)=>`
+    <label class="cx"><input type="checkbox" data-code="${c.code}" data-cx="${i}" ${c.c[i]?"checked":""}><span>${t}</span></label>`).join("");
+  return `<div class="detail" id="d-${c.code}">
+    <h4>${c.name}</h4>
+    <p class="dmeta">${c.regime} &middot; shorting cost: ${c.carry} &middot; instrument depth ${c.liquidity}/10 &middot; scores dated ${c.asof}</p>
+    <div class="cols">
+      <div><p class="colhead">Vulnerability factors, 0 to 10</p>${facs}</div>
+      <div><p class="colhead">Policy contradictions</p>${cxs}</div>
+    </div>
+    <div class="notes">
+      <p style="margin:0 0 6px">Working note</p>
+      <textarea data-code="${c.code}" data-note="1">${c.notes || ""}</textarea>
+    </div>
+  </div>`;
+}
+
+function groupHTML(title, note, rows){
+  if(!rows.length) return "";
+  return `<div class="group"><h3>${title}</h3><p class="gnote">${note}</p>
+    <div class="head">
+      <span data-sort="code">Code</span><span>Currency and regime</span>
+      <span data-sort="score" style="text-align:right">Score</span>
+      <span data-sort="cd" style="text-align:right">Contra</span>
+      <span class="liq" data-sort="liq">Depth</span><span style="text-align:right">Band</span>
+    </div>
+    ${rows.map(c => rowHTML(c) + (open===c.code ? detailHTML(c) : "")).join("")}
+  </div>`;
+}
+
+function renderList(){
+  const rows = view();
+  let html = "";
+  if(filter === "all"){
+    html += groupHTML("Pegged and managed",
+      "A defended level can break. The score measures how expensive the defence is getting; the contradiction count measures how much the defender has to lose by giving up.",
+      rows.filter(c=>c.group==="managed"));
+    html += groupHTML("Floating",
+      "Nothing breaks here, so there is no gap to be paid for. These are valuation and rate-differential trades that carry against you while you wait.",
+      rows.filter(c=>c.group==="float"));
+  } else {
+    html += groupHTML(filter === "managed" ? "Pegged and managed" : "Floating", "", rows);
+  }
+  $("list").innerHTML = html;
+
+  $("list").querySelectorAll(".row").forEach(b=>b.addEventListener("click", e=>{
+    open = (open === b.dataset.code) ? null : b.dataset.code; renderList(); renderMap();
+  }));
+  $("list").querySelectorAll("[data-sort]").forEach(h=>h.addEventListener("click", ()=>{
+    sortKey = h.dataset.sort; renderList();
+  }));
+  $("list").querySelectorAll("input[type=range]").forEach(r=>r.addEventListener("input", e=>{
+    e.stopPropagation();
+    const c = DATA.currencies.find(x=>x.code===r.dataset.code);
+    c.f[r.dataset.fac] = Number(r.value);
+    c.asof = "edited";
+    $("v-"+r.dataset.code+"-"+r.dataset.fac).textContent = r.value;
+    const row = $("list").querySelector(`.row[data-code="${r.dataset.code}"]`);
+    if(row){ const s = score(c), bd = band(s);
+      row.querySelector(".score").textContent = s.toFixed(0);
+      row.querySelector(".score").style.color = bd.color; }
+    renderMap();
+  }));
+  $("list").querySelectorAll("input[type=checkbox]").forEach(cb=>cb.addEventListener("change", e=>{
+    e.stopPropagation();
+    const c = DATA.currencies.find(x=>x.code===cb.dataset.code);
+    c.c[Number(cb.dataset.cx)] = cb.checked ? 1 : 0;
+    const row = $("list").querySelector(`.row[data-code="${cb.dataset.code}"]`);
+    if(row) row.querySelector(".cd").textContent = contradiction(c)+"/10";
+    renderMap();
+  }));
+  $("list").querySelectorAll("textarea").forEach(t=>{
+    t.addEventListener("click", e=>e.stopPropagation());
+    t.addEventListener("input", ()=>{
+      DATA.currencies.find(x=>x.code===t.dataset.code).notes = t.value;
+    });
+  });
+  $("list").querySelectorAll(".detail").forEach(d=>d.addEventListener("click", e=>e.stopPropagation()));
+}
+
+function renderWeights(){
+  $("wgrid").innerHTML = FACTORS.map(f=>`
+    <div class="wrow"><label for="w-${f.k}">${f.label}</label>
+    <input class="num" id="w-${f.k}" type="number" min="0" max="100" step="1" value="${DATA.weights[f.k]}" data-w="${f.k}"></div>`).join("");
+  $("wgrid").querySelectorAll("input").forEach(i=>i.addEventListener("input", ()=>{
+    DATA.weights[i.dataset.w] = clamp(Number(i.value)||0, 0, 100);
+    renderWeightSum(); renderList(); renderMap();
+  }));
+  renderWeightSum();
+}
+function renderWeightSum(){
+  const s = weightSum();
+  const el = $("wsum");
+  el.className = "wsum" + (s === 100 ? "" : " bad");
+  el.textContent = s === 100
+    ? "Weights total 100. Scores read directly as 0 to 100."
+    : `Weights total ${s}. Scores are on a 0 to ${s} scale until this reaches 100, so the bands will read wrong.`;
+}
+
+function renderFoot(){
+  $("foot").innerHTML = `Alert condition: score at or above 65, at least 8 contradictions met, and instrument depth at or above 6. ` +
+    `Watch condition: score at or above 50 with at least 6 contradictions. ` +
+    `Hollow dots on the map are currencies you cannot short at reasonable size, which is why several of the highest scores never trigger. ` +
+    `Refresh the underlying numbers from IMF IFS for reserves, IMF WEO for the current account, the Joint External Debt Hub for external and short-term debt, and BIS for real effective exchange rates.`;
+}
+
+function renderAll(){ renderStatus(); renderMap(); renderList(); renderWeights(); renderFoot(); }
+
+/* ---------- actions ---------- */
+
+function setFilter(f){
+  filter = f; open = null;
+  for(const [id,val] of [["f-all","all"],["f-managed","managed"],["f-float","float"]])
+    $(id).setAttribute("aria-pressed", String(f===val));
+  renderList(); renderMap();
+}
+$("f-all").onclick = ()=>setFilter("all");
+$("f-managed").onclick = ()=>setFilter("managed");
+$("f-float").onclick = ()=>setFilter("float");
+
+$("btn-weights").onclick = ()=>{
+  const p = $("wpanel"); p.hidden = !p.hidden;
+  $("btn-weights").setAttribute("aria-pressed", String(!p.hidden));
+};
+
+$("btn-export").onclick = ()=>{
+  const out = {
+    version: DATA.version || 1,
+    updated: new Date().toISOString().slice(0,10),
+    weights: DATA.weights,
+    currencies: DATA.currencies
+  };
+  const blob = new Blob([JSON.stringify(out, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "soros_data.json";
+  a.click();
+  URL.revokeObjectURL(a.href);
+  $("msg").textContent = "Downloaded. Commit it next to this page and it loads from the file on the next refresh.";
+};
+
+/* Recent spot moves. Informational only: it never overwrites your scores.
+   The ECB reference set does not cover the Gulf pegs, EGP or ARS. */
+$("btn-spot").onclick = async ()=>{
+  const supported = ["HKD","CNY","TRY","BRL","MXN","ZAR","KRW","IDR","INR","PHP","THB","PLN","HUF","CZK","JPY"];
+  const map = {CNY:"CNH"};
+  $("msg").textContent = "Fetching…";
+  try{
+    const then = new Date(Date.now() - 90*864e5).toISOString().slice(0,10);
+    const q = "from=USD&to=" + supported.join(",");
+    const [a,b] = await Promise.all([
+      fetch(`https://api.frankfurter.app/${then}?${q}`).then(r=>r.json()),
+      fetch(`https://api.frankfurter.app/latest?${q}`).then(r=>r.json())
+    ]);
+    if(!a.rates || !b.rates) throw new Error("no rates");
+    spot = {};
+    for(const k of supported){
+      if(a.rates[k] && b.rates[k]) spot[map[k]||k] = (b.rates[k]/a.rates[k] - 1) * 100;
+    }
+    $("msg").textContent = "Change in USD per unit of currency over roughly 90 days. Positive means the currency has weakened. Gulf pegs, EGP and ARS are not in this source.";
+    renderStatus(); renderList();
+  }catch(err){
+    $("msg").textContent = "Could not reach the rate source. The page works without it; scores come from soros_data.json.";
+  }
+};
+
+load();
+</script>
+</body>
+</html>
